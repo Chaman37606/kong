@@ -24,10 +24,12 @@ local tostring   = tostring
 local sort       = table.sort
 local concat     = table.concat
 local insert     = table.insert
+local byte       = string.byte
 local lower      = string.lower
 local fmt        = string.format
 local find       = string.find
 local gsub       = string.gsub
+local sub        = string.sub
 local split      = pl_stringx.split
 local re_find    = ngx.re.find
 local re_match   = ngx.re.match
@@ -660,6 +662,63 @@ _M.hostname_type = function(name)
   end
   return "name"
 end
+
+do
+  local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
+
+  --- splits an optional ':port' section from a hostname
+  -- the port section must be decimal digits only.
+  -- brackets ('[]') are peeled off the hostname if present.
+  -- if there's more than one colon and no brackets, no split is possible.
+  -- on non-parseable input, returns name unchanged,
+  -- every string input produces at least one string output.
+  -- @param name (string) the string to split.
+  -- @treturn string hostname
+  -- @treturn number port or nil if not found
+  local function l_split_port(name)
+    if byte(name, 1) == LEFTBRACKET then
+      if byte(name, -1) == RIGHTBRACKET then
+        return sub(name, 2, -2)
+      end
+      local splitpos = find(name, "]:", 2, true)
+      if splitpos then
+        local port = tonumber(sub(name, splitpos+2))
+        if port or splitpos == #name - 1 then
+          return sub(name, 2, splitpos - 1), port
+        end
+      end
+      return name
+    end
+
+    local firstcolon = find(name, ":", 1, true)
+    if not firstcolon then
+      return name
+    end
+
+    for i = firstcolon + 1, #name do
+      local c = byte(name, i)
+      if c < ZERO or c > NINE then
+        return name
+      end
+    end
+    return sub(name, 1, firstcolon - 1), tonumber(name:sub(firstcolon+1))
+  end
+
+  -- split_port is a pure function, so we can memoize it.
+  local memo_h = setmetatable({}, {__mode = 'k'})
+  local memo_p = setmetatable({}, {__mode = 'k'})
+
+  function _M.split_port(name)
+    local h, p = memo_h[name], memo_p[name]
+    if not h then
+      h, p = l_split_port(name)
+      memo_h[name], memo_p[name] = h, p
+    end
+
+    return h, p
+  end
+end
+
 
 --- parses, validates and normalizes an ipv4 address.
 -- @param address the string containing the address (formats; ipv4, ipv4:port)

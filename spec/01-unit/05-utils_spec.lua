@@ -437,6 +437,24 @@ describe("Utils", function()
   end)
 
   describe("hostnames and ip addresses", function()
+    it("splits port number", function()
+      for _, case in ipairs({
+        { '', { '', nil } },
+        { 'localhost', { 'localhost', nil } },
+        { 'localhost:', { 'localhost', nil } },
+        { 'localhost:80', { 'localhost', 80 } },
+        { 'localhost:23h', { 'localhost:23h', nil } },
+        { 'localhost/24', { 'localhost/24', nil } },
+        { '::1', { '::1', nil } },
+        { '[::1]', { '::1', nil } },
+        { '[::1]:', { '::1', nil } },
+        { '[::1]:80', { '::1', 80 } },
+        { '[::1]:80b', { '[::1]:80b', nil } },
+        { '[::1]/96', { '[::1]/96', nil } },
+      }) do
+        assert.same(case[2], { utils.split_port(case[1]) })
+      end
+    end)
     describe("hostname_type", function()
       -- no check on "name" type as anything not ipv4 and not ipv6 will be labelled as 'name' anyway
       it("checks valid IPv4 address types", function()
