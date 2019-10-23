@@ -15,6 +15,25 @@ pipeline {
         KONG_BUILD_TOOLS = "origin/feat/kong-jenkins"
     }
     stages {
+        stage('Integration Tests') {
+            parallel {
+                stage('postgres') {
+                    agent {
+                        node {
+                            label 'docker-compose'
+                        }
+                    }
+                    environment {
+                        
+                    }
+                    steps {
+                        
+                    }
+                }
+            }
+        }
+    }
+    stages {
         stage('Nightly Releases') {
             parallel {
                 stage('Ubuntu Releases') {
